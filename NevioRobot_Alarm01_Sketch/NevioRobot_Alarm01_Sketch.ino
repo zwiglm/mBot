@@ -1,13 +1,15 @@
-
 #include <Arduino.h>
 #include <Wire.h>
 #include <Servo.h>
 #include <SoftwareSerial.h>
+
+//Added after mBlock
 #include <EEPROM.h>
+#include <RTClib.h>
+//
 
 #include "mBot.h"
 #include "MePort.h"
-MeBoard myBoard(mBot);
 #include "MeIR.h"
 #include "MeRGBLed.h"
 #include "MeBuzzer.h"
@@ -15,6 +17,11 @@ MeBoard myBoard(mBot);
 #include "MeUltrasonic.h"
 #include "MeDCMotor.h"
 
+// Added after mBlock
+RTC_DS1307 RTC;
+//
+
+MeBoard myBoard(mBot);
 double angle_rad = PI/180.0;
 double angle_deg = 180.0/PI;
 MeIR ir;
@@ -35,7 +42,7 @@ MeLEDMatrix ledMtx_3(3);
 void ShowDateFnc(double nowDay, double nowMonth);
 unsigned char drawBuffer[16];
 unsigned char *drawTemp;
-void Do(double wakeCounts);
+void DoWake(double wakeCounts);
 void Walk(double iWalkTime, double walkSpeed);
 double iWalkLineStart;
 double iWalkLineRunner;
@@ -48,16 +55,14 @@ MeDCMotor motor(0);
 
 void PlayYankeeSeconds(double iPlayYankTime)
 {
-    iPlayYankStart = getLastTime();
-    
+    iPlayYankStart = getLastTime();    
     iPlayYankRunner = iPlayYankStart;
     
     while(!(((iPlayYankRunner) - (iPlayYankStart)) > (iPlayYankTime)))
     {
         Play();
         iPlayYankRunner = getLastTime();
-    }
-    
+    }    
 }
 
 void PlayYankeeNr(double iPlayYankNr)
@@ -65,8 +70,7 @@ void PlayYankeeNr(double iPlayYankNr)
     for(int i=0;i<iPlayYankNr;i++)
     {
         Play();
-    }
-    
+    }    
 }
 
 void Play()
@@ -128,7 +132,7 @@ drawTemp = new unsigned char[16]{0,0,64,72,68,66,2,2,2,2,66,68,72,64,0,0};
     
 }
 
-void Do(double wakeCounts)
+void DoWake(double wakeCounts)
 {
     for(int i=0;i<wakeCounts;i++)
     {
@@ -142,10 +146,8 @@ void Do(double wakeCounts)
 
 void Walk(double iWalkTime, double walkSpeed)
 {
-    iPlayYankRunner = 100;
-    
-    iWalkLineStart = getLastTime();
-    
+    iPlayYankRunner = 100;    
+    iWalkLineStart = getLastTime();    
     iWalkLineRunner = iWalkLineStart;
     
     while(!(((iWalkLineRunner) - (iWalkLineStart)) > (iWalkTime)))
@@ -170,20 +172,42 @@ void Walk(double iWalkTime, double walkSpeed)
             motor.move(1,0);
         }
         iWalkLineRunner = getLastTime();
-    }
+    }    
     
-    motor.move(1,0);
-    
+    motor.move(1,0);    
 }
 
 
 void setup(){
+  
+    // Added after mBlock
+    Serial.begin(9600);
+    Serial.println("Serial started");
+    
+    Wire.begin();
+    RTC.begin();
+    if (! RTC.isrunning()) {
+      Serial.println("RTC is NOT running!");
+      // following line sets the RTC to the date & time this sketch was compiled
+      RTC.adjust(DateTime(__DATE__, __TIME__));
+    }
+    //
+    
     ir.begin();
     rgbled_7.setNumber(7==7?2:16);
-    Do(2);    
+
+    //DoWake(2);    
 }
 
 void loop(){
+    
+    DateTime now = RTC.now();
+    Serial.print(now.dayOfWeek(), DEC);
+    Serial.print('-');
+    Serial.print(now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(now.minute(), DEC);
+    Serial.println();
     
     if(ir.keyPressed(69)){
         rgbled_7.setColor(1,255,0,0);
@@ -192,16 +216,10 @@ void loop(){
         rgbled_7.setColor(1,0,255,0);
         rgbled_7.show();
     }
+    
     ShowTimeFnc(10,22);
     ShowDateFnc(1,1);
     
     ir.loop();    
-    ir.loop();    
-    ir.loop();    
-    ir.loop();    
-    ir.loop();    
-    ir.loop();    
-    ir.loop();    
-    ir.loop();        
 }
 
