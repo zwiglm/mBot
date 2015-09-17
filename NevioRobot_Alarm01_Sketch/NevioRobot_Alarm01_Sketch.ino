@@ -42,7 +42,7 @@ MeLEDMatrix ledMtx_3(3);
 void ShowDateFnc(double nowDay, double nowMonth);
 unsigned char drawBuffer[16];
 unsigned char *drawTemp;
-void DoWake(double wakeCounts);
+void DoWake(double wakeCounts, boolean withSound);
 void Walk(double iWalkTime, double walkSpeed);
 double iWalkLineStart;
 double iWalkLineRunner;
@@ -115,7 +115,7 @@ void ShowTimeFnc(double nowHour, double nowMinute)
     ledMtx_3.setColorIndex(1);
     ledMtx_3.setBrightness(6);
     ledMtx_3.showClock(nowHour,nowMinute,strcmp(":",":")==0);    
-    delay(1000*1);    
+    delay(2000*1);    
 }
 
 void ShowDateFnc(double nowDay, double nowMonth)
@@ -123,7 +123,7 @@ void ShowDateFnc(double nowDay, double nowMonth)
     ledMtx_3.clearScreen();
     ledMtx_3.setColorIndex(1);
     ledMtx_3.setBrightness(6);
-drawTemp = new unsigned char[16]{0,0,64,72,68,66,2,2,2,2,66,68,72,64,0,0};
+    drawTemp = new unsigned char[16]{0,0,64,72,68,66,2,2,2,2,66,68,72,64,0,0};
     memcpy(drawBuffer,drawTemp,16);
     free(drawTemp);
     ledMtx_3.drawBitmap(0,0,16,drawBuffer);
@@ -132,14 +132,14 @@ drawTemp = new unsigned char[16]{0,0,64,72,68,66,2,2,2,2,66,68,72,64,0,0};
     
 }
 
-void DoWake(double wakeCounts)
+void DoWake(double wakeCounts, boolean withSound)
 {
     for(int i=0;i<wakeCounts;i++)
     {
-        PlayYankeeSeconds(20);
-        Walk(10,60);
-        PlayYankeeSeconds(20);
-        Walk(10,60);
+        PlayYankeeSeconds(17);
+        if (withSound) {
+          Walk(13,60);
+        }
     }
     
 }
@@ -191,35 +191,58 @@ void setup(){
       // following line sets the RTC to the date & time this sketch was compiled
       RTC.adjust(DateTime(__DATE__, __TIME__));
     }
+
+    EEPROM.update(1, 6);
+    EEPROM.update(2, 6);
+    EEPROM.update(3, 6);
+    EEPROM.update(4, 2);
+    EEPROM.update(5, 6);
+    EEPROM.update(6, 99);
+    EEPROM.update(7, 99);
+    
+    EEPROM.update(8, 45);
+    EEPROM.update(9, 45);
+    EEPROM.update(10, 45);
+    EEPROM.update(11, 01);
+    EEPROM.update(12, 45);
+    EEPROM.update(13, 99);
+    EEPROM.update(14, 99);
     //
     
     ir.begin();
     rgbled_7.setNumber(7==7?2:16);
-
-    //DoWake(2);    
 }
 
 void loop(){
     
+    // Added after mBlock
     DateTime now = RTC.now();
-    Serial.print(now.dayOfWeek(), DEC);
-    Serial.print('-');
-    Serial.print(now.hour(), DEC);
-    Serial.print(':');
-    Serial.print(now.minute(), DEC);
-    Serial.println();
-    
-    if(ir.keyPressed(69)){
-        rgbled_7.setColor(1,255,0,0);
-        rgbled_7.show();
-    }else{
-        rgbled_7.setColor(1,0,255,0);
-        rgbled_7.show();
+    uint8_t dow = now.dayOfWeek();
+    uint8_t hrs = now.hour();
+    uint8_t mins = now.minute();
+
+    int wHrs = EEPROM.read(dow);
+    int wMins = EEPROM.read(dow + 7);
+
+    if (hrs == wHrs && mins == wMins) {
+        boolean withSound = true;
+        for (int wRep = 0; wRep < 4; wRep ++) {
+          
+            DoWake(1, withSound);
+            //if (ir.keyPressed(69)) {
+            if ((0^(analogRead(A7)>10?0:1))) {
+                rgbled_7.setColor(1,255,0,0);
+                rgbled_7.show();
+                withSound = false;
+            }
+            //ir.loop();    
+        }
+    } else {
+      rgbled_7.clear();
     }
+    //
     
-    ShowTimeFnc(10,22);
-    ShowDateFnc(1,1);
-    
-    ir.loop();    
+    ShowTimeFnc(hrs,mins);
+    ShowDateFnc(1,1);    
 }
 
