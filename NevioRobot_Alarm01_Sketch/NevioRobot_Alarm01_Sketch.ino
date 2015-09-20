@@ -19,6 +19,8 @@
 
 // Added after mBlock
 RTC_DS1307 RTC;
+boolean withSound = true;
+//MePort lightsensor_8(8);
 //
 
 MeBoard myBoard(mBot);
@@ -42,7 +44,7 @@ MeLEDMatrix ledMtx_3(3);
 void ShowDateFnc(double nowDay, double nowMonth);
 unsigned char drawBuffer[16];
 unsigned char *drawTemp;
-void DoWake(double wakeCounts, boolean withSound);
+void DoWake(double wakeCounts);
 void Walk(double iWalkTime, double walkSpeed);
 double iWalkLineStart;
 double iWalkLineRunner;
@@ -60,6 +62,9 @@ void PlayYankeeSeconds(double iPlayYankTime)
     
     while(!(((iPlayYankRunner) - (iPlayYankStart)) > (iPlayYankTime)))
     {
+        if ((0^(analogRead(A7)>10?0:1)))
+          withSound = false;
+        
         Play();
         iPlayYankRunner = getLastTime();
     }    
@@ -75,38 +80,40 @@ void PlayYankeeNr(double iPlayYankNr)
 
 void Play()
 {
-    buzzer.tone(1047);    
-    delay(1000*0.125);    
-    buzzer.tone(1175);    
-    delay(1000*0.125);    
-    buzzer.tone(1319);    
-    delay(1000*0.25);    
-    buzzer.tone(1568);    
-    delay(1000*0.25);    
-    buzzer.tone(1568);    
-    delay(1000*0.25);    
-    buzzer.tone(1760);    
-    delay(1000*0.25);    
-    buzzer.tone(1568);    
-    delay(1000*0.25);    
-    buzzer.tone(1319);    
-    delay(1000*0.25);    
-    buzzer.tone(1047);    
-    delay(1000*0.5);    
-    buzzer.tone(1175);    
-    delay(1000*0.125);    
-    buzzer.tone(1319);    
-    delay(1000*0.25);    
-    buzzer.tone(1319);    
-    delay(1000*0.25);    
-    buzzer.tone(1175);    
-    delay(1000*0.25);    
-    buzzer.tone(1047);    
-    delay(1000*0.25);    
-    buzzer.tone(1175);    
-    delay(1000*1);    
-    buzzer.noTone();    
-    delay(1000*2);    
+    if (withSound) {
+      buzzer.tone(1047);    
+      delay(1000*0.125);    
+      buzzer.tone(1175);    
+      delay(1000*0.125);    
+      buzzer.tone(1319);    
+      delay(1000*0.25);    
+      buzzer.tone(1568);    
+      delay(1000*0.25);    
+      buzzer.tone(1568);    
+      delay(1000*0.25);    
+      buzzer.tone(1760);    
+      delay(1000*0.25);    
+      buzzer.tone(1568);    
+      delay(1000*0.25);    
+      buzzer.tone(1319);    
+      delay(1000*0.25);    
+      buzzer.tone(1047);    
+      delay(1000*0.5);    
+      buzzer.tone(1175);    
+      delay(1000*0.125);    
+      buzzer.tone(1319);    
+      delay(1000*0.25);    
+      buzzer.tone(1319);    
+      delay(1000*0.25);    
+      buzzer.tone(1175);    
+      delay(1000*0.25);    
+      buzzer.tone(1047);    
+      delay(1000*0.25);    
+      buzzer.tone(1175);    
+      delay(1000*1);    
+      buzzer.noTone();    
+      delay(1000*2);    
+    }
 }
 
 void ShowTimeFnc(double nowHour, double nowMinute)
@@ -132,14 +139,12 @@ void ShowDateFnc(double nowDay, double nowMonth)
     
 }
 
-void DoWake(double wakeCounts, boolean withSound)
+void DoWake(double wakeCounts)
 {
     for(int i=0;i<wakeCounts;i++)
     {
-        PlayYankeeSeconds(17);
-        if (withSound) {
-          Walk(13,60);
-        }
+        PlayYankeeSeconds(30);
+        Walk(30,60);
     }
     
 }
@@ -192,21 +197,31 @@ void setup(){
       RTC.adjust(DateTime(__DATE__, __TIME__));
     }
 
+    // Wake hours
+    EEPROM.update(0, 7);
     EEPROM.update(1, 6);
     EEPROM.update(2, 6);
     EEPROM.update(3, 6);
-    EEPROM.update(4, 2);
+    EEPROM.update(4, 6);
     EEPROM.update(5, 6);
-    EEPROM.update(6, 99);
-    EEPROM.update(7, 99);
-    
-    EEPROM.update(8, 45);
-    EEPROM.update(9, 45);
-    EEPROM.update(10, 45);
-    EEPROM.update(11, 01);
-    EEPROM.update(12, 45);
-    EEPROM.update(13, 99);
-    EEPROM.update(14, 99);
+    EEPROM.update(6, 7);
+
+    // Wake minutes
+    EEPROM.update(7, 15);
+    EEPROM.update(8, 40);
+    EEPROM.update(9, 40);
+    EEPROM.update(10, 40);
+    EEPROM.update(11, 40);
+    EEPROM.update(12, 40);
+    EEPROM.update(13, 15);
+
+    // "FaceMode" can be only set for all days
+    // Start
+    EEPROM.update(15, 6);
+    EEPROM.update(16, 10);
+    // End
+    EEPROM.update(17, 21);
+    EEPROM.update(18, 59);
     //
     
     ir.begin();
@@ -217,32 +232,77 @@ void loop(){
     
     // Added after mBlock
     DateTime now = RTC.now();
+    uint16_t years = now.year();
+    uint8_t months = now.month();
+    uint8_t days = now.day();
+
+//    Serial.print(years, DEC);
+//    Serial.print('-');
+//    Serial.print(months, DEC);
+//    Serial.print('-');
+//    Serial.print(days, DEC);
+//    Serial.println();
+
     uint8_t dow = now.dayOfWeek();
     uint8_t hrs = now.hour();
     uint8_t mins = now.minute();
+    uint32_t uxNow = now.unixtime();
 
     int wHrs = EEPROM.read(dow);
     int wMins = EEPROM.read(dow + 7);
 
     if (hrs == wHrs && mins == wMins) {
-        boolean withSound = true;
-        for (int wRep = 0; wRep < 4; wRep ++) {
+        for (int wRep = 0; wRep < 5; wRep ++) {
           
-            DoWake(1, withSound);
-            //if (ir.keyPressed(69)) {
-            if ((0^(analogRead(A7)>10?0:1))) {
-                rgbled_7.setColor(1,255,0,0);
-                rgbled_7.show();
-                withSound = false;
-            }
+            rgbled_7.setColor(1,255,204,0);
+            rgbled_7.show();
+            DoWake(1);
+            //if (ir.keyPressed(69)) { }
             //ir.loop();    
         }
     } else {
-      rgbled_7.clear();
+        withSound = true;
+        rgbled_7.clear();
+
+        int qStartHrs = EEPROM.read(15);
+        int qStartMins = EEPROM.read(16);
+        int qEndHrs = EEPROM.read(17);
+        int qEndMins = EEPROM.read(18);
+
+//        Serial.print(qStartHrs, DEC);
+//        Serial.print('-');
+//        Serial.print(qStartMins, DEC);
+//        Serial.print('-');
+//        Serial.print(qEndHrs, DEC);
+//        Serial.print('-');
+//        Serial.print(qEndMins, DEC);
+//        Serial.println();
+
+        // starting face
+        DateTime dtStartFace = DateTime(years, months, days, qStartHrs, qStartMins);
+        uint32_t uxStartFace = dtStartFace.unixtime();
+        // .... to ending face
+        DateTime dtEndFace = DateTime(years, months, days, qEndHrs, qEndMins);
+        uint32_t uxEndFace = dtEndFace.unixtime();
+
+//        Serial.print(uxStartFace, DEC);
+//        Serial.print('-');
+//        Serial.print(uxNow, DEC);
+//        Serial.print('-');
+//        Serial.print(uxEndFace, DEC);
+//        Serial.println();
+
+        if ((uxStartFace < uxNow && uxNow <= uxEndFace)) {
+            ShowTimeFnc(hrs,mins);
+            ShowDateFnc(1,1);    
+        } else {
+            ledMtx_3.clearScreen();
+        }
+        
+//        Light Sensor on our mBot seems NOT to work (no matter if dark or shine on with torch-light) 
+//        double lightVal = lightsensor_8.aRead2();
+//        Serial.println(lightVal);
     }
-    //
-    
-    ShowTimeFnc(hrs,mins);
-    ShowDateFnc(1,1);    
+    //    
 }
 
